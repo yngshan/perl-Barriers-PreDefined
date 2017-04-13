@@ -2,6 +2,11 @@ package Barriers::PreDefined;
 
 use strict;
 use warnings;
+use YAML::XS qw(LoadFile);
+use File::ShareDir ();
+use List::Util qw(first min max);
+use Math::CDF qw(qnorm);
+use Format::Util::Numbers qw(roundnear);
 
 our $VERSION = '0.10';
 
@@ -13,7 +18,7 @@ Barriers::PreDefined - A class to calculate a series of predefined barriers for 
 =head1 SYNOPSIS
 
     use Barriers::PreDefined;
-    my $available_barriers = Barriers::PreDefined->new->calculate_available_barriers($contract_type, $duration, $central_spot, $pip_size, $method);
+    my $available_barriers = Barriers::PreDefined->new->calculate_available_barriers($contract_type, $duration, $central_spot, $display_decimal, $method);
 
 =head1 DESCRIPTION
 
@@ -38,7 +43,7 @@ Steps:
    Barrier_8 (labeled as 85) : central_spot + 35 * m
    Barrier_9 (labeled as 95) : central_spot + 45 * m
 
-4) Apply the barriers for each option types as follow:
+4) Apply the barriers for each contract types as follow:
    - Single_barrier_european_option: The whole barriers array
    - Single_barrier_american_option: The whole barriers array except the central_spot
    - Double_barrier_european_option: 7 pairs associated with [lower_barrier, higher_barrier] as follow:
@@ -76,7 +81,7 @@ Steps:
    New_barrier_8 (labeled as 22) : min( round(barrier_8/m) * m, new_barrier_7 - m )
    New_barrier_9 (labeled as 5)  : min( round(barrier_9/m) * m, new_barrier_8 - m )
 
-6) Apply the barriers for each option types as follow:
+6) Apply the barriers for each contract types as follow:
    - Single_barrier_european_option: The whole barriers array
    - Single_barrier_american_option: The whole barriers array except the central_spot
    - Double_barrier_european_option: 7 pairs associated with [lower_barrier, higher_barrier] as follow:
@@ -86,29 +91,71 @@ Steps:
 
 =cut
 
-=head1 METHODS
+=head1 ATTRIBUTES
+
+=head2 contract_type
+
+The contract type.
+
+=head2 duration
+
+The contract duration
+
+=head2 central_spot
+
+The spot at the start of the contract
+
+=head2 display_decimal
+
+The number of the display decimal
+
+=head2 method
+
+The method for the barrier calculation, method_1 or method_2
+
+=head2 config_param
+
+A configuration parameter contains the configuration of each contract type
 
 =cut
 
+my $config_param = LoadFile(File::ShareDir::dist_file('Barriers::PreDefined', 'contract_type_config.yml'));
+
+
+=head1 METHODS
+
+calculate_available_barriers($contract_type, $duration, $central_spot, $display_decimal, $method);
+
+A function to calculate available barriers for a contract type
+
+
+=cut
+
+sub calculate_available_barriers {
+    my ($contract_type, $duration, $central_spot, $display_decimal, $method) = @_;
+
+    my $barriers_list = _calculate_barriers({
+        duration        => $duration,
+        central_spot    => $central_spot,
+        display_decimal  => $display_decimal,
+        method          => $method,
+    });
+
+    my $available_barriers;
+    my @barriers_pairs  = @{$config_param->{$contract_type}->{$method}};
+    my $barrier_type   = $confif_param->{$contract_type}->{barrier_type};    
+
+    if ($barrier_type == 1) {
+        $available_barriers = [ map {sprintf '%.' . $display_decimal . 'f', $barriers_list{$_}} @barrier_pairs;
+    } elsif ($barrier_type == 2) {
+
+        $available_barriers =
+            [map { [sprintf '%.' . $display_decimal . 'f',$barriers_list->{$_->[0]}, sprintf '%.' . $display_decimal . 'f',$barriers->{$_->[1]}] } @barrier_pairs];
+    }
+
+    return $available_barriers;
+}
+
+
 1;
-
-=head1 AUTHOR
-
-Chylli <chylli@163.com>
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is copyright (c) 2017 by Chylli.
-
-This is free software; you can redistribute it and/or modify it under
-the same terms as the Perl 5 programming language system itself.
-
-
-=head1 SEE ALSO
-
-=over 4
-
-=item *
-
-=back
 
