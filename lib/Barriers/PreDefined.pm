@@ -219,7 +219,7 @@ sub _build_calculate_method_1 {
     my ($duration, $central_spot, $display_decimal, $barriers_levels) = @{$args}{qw(duration central_spot display_decimal barriers_levels)};
 
     my $tiy = $duration / (365 * 86400);
-    my @initial_barriers            = map { _get_strike_from_call_bs_price($_, $tiy, $central_spot, 0.1) } (0.05, 0.95);
+    my @initial_barriers            = map { _get_barrier_from_call_bs_price($_, $tiy, $central_spot, 0.1) } (0.05, 0.95);
     my $distance_between_boundaries = abs($initial_barriers[0] - $initial_barriers[1]);
     my $minimum_step                = sprintf '%.' . $display_decimal . 'f', ($distance_between_boundaries / 90);
     my @steps                       = uniq(map { abs(50 - $_) } @{$barriers_levels});
@@ -243,7 +243,7 @@ sub _build_calculate_method_2 {
     my ($duration, $central_spot, $display_decimal, $barriers_levels) = @{$args}{qw(duration central_spot display_decimal barriers_levels)};
 
     my $tiy = $duration / (365 * 86400);
-    my @initial_barriers            = map { _get_strike_from_call_bs_price($_, $tiy, $central_spot, 0.1) } (0.05, 0.95);
+    my @initial_barriers            = map { _get_barrier_from_call_bs_price($_, $tiy, $central_spot, 0.1) } (0.05, 0.95);
     my $distance_between_boundaries = abs($initial_barriers[0] - $initial_barriers[1]);
     my $minimum_step                = sprintf '%.' . $display_decimal . 'f', ($distance_between_boundaries / 90);
     my @steps                       = uniq(map { abs(50 - $_) } @{$barriers_levels});
@@ -290,11 +290,11 @@ sub _build_calculate_method_2 {
 
 }
 
-=head2 _get_strike_from_call_bs_price
-To get the strike that associated with a given call bs price.
+=head2 _get_barrier_from_call_bs_price
+To get the barrier that associated with a given call bs price.
 =cut
 
-sub _get_strike_from_call_bs_price {
+sub _get_barrier_from_call_bs_price {
     my ($call_price, $T, $spot, $vol) = @_;
 
     my $q  = 0;
