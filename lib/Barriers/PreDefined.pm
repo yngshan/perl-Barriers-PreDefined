@@ -18,8 +18,8 @@ Barriers::PreDefined - A class to calculate a series of predefined barriers for 
 =head1 SYNOPSIS
 
     use Barriers::PreDefined;
-    my $available_barriers = Barriers::PreDefined->new->calculate_available_barriers({
-                             config        => $config,
+    my $barrier_class = Barriers::PreDefined->new(config => $config);
+    my $available_barriers = $barrier_class->calculate_available_barriers({
                              contract_type => $contract_type, 
                              duration      => $duration, 
                              central_spot  => $central_spot, 
@@ -145,25 +145,25 @@ has _contract_barrier_levels => (
 );
 
 has calculate_method_1 => (
-    is         => 'ro',
+    is         => 'rw',
     lazy_build => 1,
 );
 
+
 has calculate_method_2 => (
-    is         => 'ro',
+    is         => 'rw',
     lazy_build => 1,
 );
 
 sub BUILD {
     my $self = shift;
-
-    my $config = $self->config;
+    my $args = shift;
+    my $config = $args->{config};
 
     my $contract_barrier_levels;
-
     for my $set (@$config) {
         for my $type (@{$set->{types}}) {
-            $contract_barrier_levels->{$type} = $set->{levels};
+            $contract_barrier_levels->{$type} = $set->{barrier_level};
         }
     }
 
@@ -182,25 +182,23 @@ Input_parameters: $contract_type, $duration, $central_spot, $display_decimal, $m
 =cut
 
 sub calculate_available_barriers {
+    my $self = shift;
     my $args = shift;
 
     my ($contract_type, $duration, $central_spot, $display_decimal, $method) =
         @{$args}{qw(contract_type duration central_spot display_decimal method)};
-
     my $barriers_levels = $self->_contract_barrier_levels->{$contract_type};
-
     my $barriers_calculation_args = {
         duration        => $duration,
         central_spot    => $central_spot,
         display_decimal => $display_decimal,
         barriers_levels => $barriers_levels
     };
-
     my $barriers_list =
-        $method eq 'method_1' ? $self->calculate_method_1($barriers_calculation_args) : $self->calculate_method_2($barriers_calculation_args);
+        $method == 1 ? $self->calculate_method_1($barriers_calculation_args) : $self->calculate_method_2($barriers_calculation_args);
 
     my $format  =  '%.' . $display_decimal . 'f';
-    my $available_barriers = [map { sprintf $format, $barriers_list{$_} } @barrier_levels];
+    my $available_barriers = [map { sprintf $format, $barriers_list->{$_} } @{$barriers_levels}];
 
     return $available_barriers;
 }
@@ -213,10 +211,10 @@ Input_parameters: $duration, $central_spot, $display_decimal, $barriers_levels
 =cut
 
 sub _build_calculate_method_1 {
+    my $self =shift;
     my $args = shift;
 
     my ($duration, $central_spot, $display_decimal, $barriers_levels) = @{$args}{qw(duration central_spot display_decimal barriers_levels)};
-
     my $tiy = $duration / (365 * 86400);
     my @initial_barriers            = map { _get_barrier_from_call_bs_price($_, $tiy, $central_spot, 0.1) } (0.05, 0.95);
     my $distance_between_boundaries = abs($initial_barriers[0] - $initial_barriers[1]);
@@ -237,6 +235,7 @@ Input_parameters: $duration, $central_spot, $display_decimal, $barriers_levels
 =cut
 
 sub _build_calculate_method_2 {
+    my $self = shift;
     my $args = shift;
 
     my ($duration, $central_spot, $display_decimal, $barriers_levels) = @{$args}{qw(duration central_spot display_decimal barriers_levels)};
@@ -253,23 +252,23 @@ sub _build_calculate_method_2 {
     my (@barriers_steps, @barriers_value);
     #all these steps do so that we can have array sorted in the way we want
     foreach my $step (@steps) {
-        next if $step = 0;
+        next if $step == 0;
         push @barriers_steps, 50 + $step;
         push @barriers_value, $rounded_central_spot + $step * $minimum_step;
 
     }
 
     push @barriers_steps, 50;
-    push @barriers_value, $central_barrier;
+    push @barriers_value, $rounded_central_spot;
 
     foreach my $step (reverse @steps) {
-        next if $step = 0;
+        next if $step == 0;
         push @barriers_steps, 50 - $step;
         push @barriers_value, $rounded_central_spot - $step * $minimum_step;
 
     }
-
-    $new_barriers{50} = $rounded_central_spot;
+    my %new_barriers;
+     $new_barriers{50} = $rounded_central_spot;
     # For the upper barrier, we are taking the max of rounded barrier(to the nearest min barrier interval) and the next new_barrier plus min barrier interval
     for (3, 2, 1, 0) {
 
