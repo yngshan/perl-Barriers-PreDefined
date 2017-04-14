@@ -3,9 +3,10 @@ package Barriers::PreDefined;
 use strict;
 use warnings;
 use Moo;
+use POSIX ();
 use YAML::XS qw(LoadFile);
-use File::ShareDir ();
-use List::Util qw(first min max);
+use List::Util qw(min max);
+use List::MoreUtils qw(uniq);
 use Math::CDF qw(qnorm);
 use Format::Util::Numbers qw(roundnear);
 
@@ -20,7 +21,7 @@ Barriers::PreDefined - A class to calculate a series of predefined barriers for 
 
     use Barriers::PreDefined;
     my $available_barriers = Barriers::PreDefined->new->calculate_available_barriers({
-                             config_file   => $config_file,
+                             config        => $config,
                              contract_type => $contract_type, 
                              duration      => $duration, 
                              central_spot  => $central_spot, 
@@ -99,11 +100,11 @@ Steps:
 
 =cut
 
-=head1 ATTRIBUTES
+=head1 INPUT PARAMETERS
 
-=head2 config_file
+=head2 config
 
-A configuration file contains the barrier interval for each contract type
+A configuration hashref that contains the selected barrier level for a contract type
 
 =head2 contract_type
 
@@ -111,7 +112,7 @@ The contract type.
 
 =head2 duration
 
-The contract duration
+The contract duration in seconds
 
 =head2 central_spot
 
@@ -119,57 +120,62 @@ The spot at the start of the contract
 
 =head2 display_decimal
 
-The number of the display decimal
+The number of the display decimal point. Example 2 mean 0.01
 
 =head2 method
 
 The method for the barrier calculation, method_1 or method_2
 
-=head2 contract_barrier_levels
+=cut
+
+=head2 _contract_barrier_levels
 
 A set of barrier level that intended to obtain for a contract type
 
+Example: 
+   - Single_barrier_european_option: [95, 78, 68, 57, 50, 43, 32, 22, 5]
+   - Single_barrier_american_option: [95, 78, 68, 57, 43, 32, 22, 5]
+   - Double_barrier_european_option: [68, 95, 57, 78, 50, 68, 43, 57, 32, 50, 22, 43, 5, 32],
+   - Double_barrier_american_option: [32, 68, 22, 78, 5, 95]
+
+The barrier level 78 is 28 * min_barrier_interval from the central spot, while 22 is -28 * min_barrier_interval from the central spot. 
+
 =cut
 
-has [qw(
-       config_file
-       contract_type
-       duration
-       central_spot
-       display_decimal
-       method
-       )
-     ] => (
-     is  => 'ro'
-    );
-
-has contract_barrier_levels => (
-      is => 'rw',
-      lazy_build => 1,
+has _contract_barrier_levels => (
+    is => 'rw',
 );
 
+has calculate_method_1 => (
+    is         => 'ro',
+    lazy_build => 1,
+);
 
-sub _build_contract_barrier_levels {
+has calculate_method_2 => (
+    is         => 'ro',
+    lazy_build => 1,
+);
+
+sub BUILD {
     my $self = shift;
 
-    my $config = $self->config_file;
+    my $config = $self->config;
 
     my $contract_barrier_levels;
 
     for my $set (@$config) {
-    for my $type (@{ $set->{types} }) {
-        $contract_barrier_levels->{$type} = $set->{levels}
+        for my $type (@{$set->{types}}) {
+            $contract_barrier_levels->{$type} = $set->{levels};
+        }
     }
+
+    $self->_contract_barrier_levels($contract_barrier_levels);
 }
-
-   return $contract_barrier_levels;
-}
-
-
 
 =head1 METHODS
 
 =cut
+
 =head2 calculate_available_barriers
 
 A function to calculate available barriers for a contract type
@@ -180,38 +186,125 @@ Input_parameters: $contract_type, $duration, $central_spot, $display_decimal, $m
 sub calculate_available_barriers {
     my $args = shift;
 
-    my ($contract_type, $duration, $central_spot, $display_decimal, $method) = @{$args}{qw(contract_type duration central_spot display_decimal method)};
+    my ($contract_type, $duration, $central_spot, $display_decimal, $method) =
+        @{$args}{qw(contract_type duration central_spot display_decimal method)};
 
-    my $barriers_list = calculate_barriers({
+    my @barriers_levels = @{$self->_contract_barrier_levels->{$contract_type}};
+
+    my $barriers_calculation_args = {
         duration        => $duration,
         central_spot    => $central_spot,
-        display_decimal  => $display_decimal,
-        method          => $method,
-    });
+        display_decimal => $display_decimal,
+        barriers_levels => \@barriers_levels
+    };
 
-    my @barriers_pairs  = @{$contract_barrier_levels->{$contract_type}};
+    my $barriers_list =
+        $method eq 'method_1' ? $self->calculate_method_1($barriers_calculation_args) : $self->calculate_method_2($barriers_calculation_args);
 
-    my $available_barriers = [ map {sprintf '%.' . $display_decimal . 'f', $barriers_list{$_}} @barrier_pairs;
+    my $available_barriers = [map { sprintf '%.' . $display_decimal . 'f', $barriers_list{$_} } @barrier_levels];
 
     return $available_barriers;
 }
 
-=head2 calculate_barriers
+=head2 calculate_method_1
 
-A function to build barriers array
-Input_parameters: $duration, $central_spot, $display_decima, $method
+A function to build barriers array based on method 1
+Input_parameters: $duration, $central_spot, $display_decimal, $barriers_levels
 
 =cut
 
-sub calculate_barriers {
+sub _build_calculate_method_1 {
     my $args = shift;
 
+    my ($duration, $central_spot, $display_decimal, $barriers_levels) = @{$args}{qw(duration central_spot display_decimal barriers_levels)};
+
+    my $tiy = $duration / (365 * 86400);
+    my @initial_barriers            = map { _get_strike_from_call_bs_price($_, $tiy, $central_spot, 0.1) } (0.05, 0.95);
+    my $distance_between_boundaries = abs($initial_barriers[0] - $initial_barriers[1]);
+    my $minimum_step                = sprintf '%.' . $display_decimal . 'f', ($distance_between_boundaries / 90);
+    my @steps                       = uniq(map { abs(50 - $_) } @{$barriers_levels});
+
+    my %new_barriers = map { (50 - $_ => $central_spot - $_ * $minimum_step, 50 + $_ => $central_spot + $_ * $minimum_step) } @steps;
+
+    return \%new_barriers;
 
 }
 
+=head2 calculate_method_2
 
+A function to build barriers array based on method 2
+Input_parameters: $duration, $central_spot, $display_decimal, $barriers_levels
 
+=cut
 
+sub _build_calculate_method_2 {
+    my $args = shift;
+
+    my ($duration, $central_spot, $display_decimal, $barriers_levels) = @{$args}{qw(duration central_spot display_decimal barriers_levels)};
+
+    my $tiy = $duration / (365 * 86400);
+    my @initial_barriers            = map { _get_strike_from_call_bs_price($_, $tiy, $central_spot, 0.1) } (0.05, 0.95);
+    my $distance_between_boundaries = abs($initial_barriers[0] - $initial_barriers[1]);
+    my $minimum_step                = sprintf '%.' . $display_decimal . 'f', ($distance_between_boundaries / 90);
+    my @steps                       = uniq(map { abs(50 - $_) } @{$barriers_levels});
+
+    my $minimum_barrier_interval = 0.0005 * (10**roundnear(1, POSIX::log10($central_spot)));
+    my $rounded_central_spot = roundnear(1, $central_spot / $minimum_barrier_interval) * $minimum_barrier_interval;
+
+    my (@barriers_steps, @barriers_value);
+    #all these steps do so that we can have array sorted in the way we want
+    foreach my $step (@steps) {
+        next if $step = 0;
+        push @barriers_steps, 50 + $step;
+        push @barriers_value, $rounded_central_spot + $step * $minimum_step;
+
+    }
+
+    push @barriers_steps, 50;
+    push @barriers_value, $central_barrier;
+
+    foreach my $step (reverse @steps) {
+        next if $step = 0;
+        push @barriers_steps, 50 - $step;
+        push @barriers_value, $rounded_central_spot - $step * $minimum_step;
+
+    }
+
+    $new_barriers{50} = $rounded_central_spot;
+    # For the upper barrier, we are taking the max of rounded barrier(to the nearest min barrier interval) and the next new_barrier plus min barrier interval
+    for (3, 2, 1, 0) {
+
+        $new_barriers{$barriers_steps[$_]} = max(roundnear(1, $barriers_value[$_] / $minimum_barrier_interval) * $minimum_barrier_interval,
+            $new_barriers{$barriers_steps[$_ + 1]} + $minimum_barrier_interval);
+
+    }
+
+    # For the lower barrier, we are taking the min of rounded barrier(to the nearest min barrier interval) and the previous new_barrier minus min barrier interval
+    for (5 .. 8) {
+        $new_barriers{$barriers_steps[$_]} = min(roundnear(1, $barriers_value[$_] / $minimum_barrier_interval) * $minimum_barrier_interval,
+            $new_barriers{$barriers_steps[$_ - 1]} - $minimum_barrier_interval);
+
+    }
+
+    return \%new_barriers;
+
+}
+
+=head2 _get_strike_from_call_bs_price
+To get the strike that associated with a given call bs price.
+=cut
+
+sub _get_strike_from_call_bs_price {
+    my ($call_price, $T, $spot, $vol) = @_;
+
+    my $q  = 0;
+    my $r  = 0;
+    my $d2 = qnorm($call_price * exp($r * $T));
+    my $d1 = $d2 + $vol * sqrt($T);
+
+    my $strike = $spot / exp($d1 * $vol * sqrt($T) - ($r - $q + ($vol * $vol) / 2) * $T);
+    return $strike;
+}
 
 1;
 
