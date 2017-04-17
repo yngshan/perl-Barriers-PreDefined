@@ -20,11 +20,11 @@ Barriers::PreDefined - A class to calculate a series of predefined barriers for 
     use Barriers::PreDefined;
     my $barrier_class = Barriers::PreDefined->new(config => $config);
     my $available_barriers = $barrier_class->calculate_available_barriers({
-                             contract_type => $contract_type, 
-                             duration      => $duration, 
-                             central_spot  => $central_spot, 
-                             display_decimal => $display_decimal,
-                             method          => $method});
+                             contract_type => 'CALLE', 
+                             duration      => 8100, 
+                             central_spot  => 100.5, 
+                             display_decimal => 2,
+                             method          => 2});
 
 =head1 DESCRIPTION
 
