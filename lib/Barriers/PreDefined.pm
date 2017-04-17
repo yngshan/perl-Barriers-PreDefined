@@ -142,7 +142,7 @@ The method for the barrier calculation, method_1 or method_2
 
 A set of barrier level that intended to obtain for a contract type
 
-Example: 
+For example:
    - Single_barrier_european_option: [95, 78, 68, 57, 50, 43, 32, 22, 5]
    - Single_barrier_american_option: [95, 78, 68, 57, 43, 32, 22, 5]
    - Double_barrier_european_option: [68, 95, 57, 78, 50, 68, 43, 57, 32, 50, 22, 43, 5, 32],
