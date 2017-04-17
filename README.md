@@ -29,13 +29,21 @@ Steps:
    Example: If the barrier\_interval are \[95, 85, 75, 62, 50, 38, 25, 15, 5\], the barriers\_array will be build as follow:
 
     Barrier_1 (labeled as 95) : central_spot + 45 * m
+
     Barrier_2 (labeled as 85) : central_spot + 35 * m
+
     Barrier_3 (labeled as 75) : central_spot + 25 * m
+
     Barrier_4 (labeled as 62) : central_spot + 12 * m
+
     Barrier_5 (labeled as 50) :  central_spot
+
     Barrier_6 (labeled as 38) : central_spot - 12 * m
+
     Barrier_7 (labeled as 25) : central_spot - 25 * m
+
     Barrier_8 (labeled as 15) : central_spot - 35 * m
+
     Barrier_9 (labeled as 5) : central_spot - 45 * m
 
 Steps:
@@ -46,34 +54,60 @@ Steps:
 3) Calculate the boundary barriers associated with a call at 5% and 95% probability.
 
 4) Build the barriers array from rounded\_central\_spot. Barriers array are computed at a set number of barrier interval from the rounded\_central\_spot.
+
    Example: If the barrier\_interval are \[45, 28, 18, 7\], the barriers\_array will be build as follow:
+
    Barrier\_1 : rounded\_central\_spot + 45 \* m
+
    Barrier\_2 : rounded\_central\_spot + 28 \* m
+
    Barrier\_3 : rounded\_central\_spot + 18 \* m
+
    Barrier\_4 : rounded\_central\_spot + 7 \* m
+
    Barrier\_5 : rounded\_central\_spot
+
    Barrier\_6 : rounded\_central\_spot - 7 \* m
+
    Barrier\_7 : rounded\_central\_spot - 18 \* m
+
    Barrier\_8 : rounded\_central\_spot - 28 \* m
+
    Barrier\_9 : rounded\_central\_spot - 45 \* m
 
 5) Build the new barriers array with ensuring the minimum\_barrier\_interval is hold.
+
    Example: Example: If the barrier\_interval are \[45, 28, 18, 7\], the new\_barrier will be build as follow:
+
    New\_barrier\_1 (labeled as 95) : max( round(barrier\_1/m) \* m, new\_barrier\_2 + m )
+
    New\_barrier\_2 (labeled as 78) : max( round(barrier\_2/m) \* m, new\_barrier\_3 + m )
+
    New\_barrier\_3 (labeled as 68) : max( round(barrier\_3/m) \* m, new\_barrier\_4 + m )
+
    New\_barrier\_4 (labeled as 57) : max( round(barrier\_4/m) \* m, new\_barrier\_5 + m )
+
    New\_barrier\_5 (labeled as 50) : rounded\_central\_spot
+
    New\_barrier\_6 (labeled as 43) : min( round(barrier\_6/m) \* m, new\_barrier\_5 - m )
+
    New\_barrier\_7 (labeled as 32) : min( round(barrier\_7/m) \* m, new\_barrier\_6 - m )
+
    New\_barrier\_8 (labeled as 22) : min( round(barrier\_8/m) \* m, new\_barrier\_7 - m )
+
    New\_barrier\_9 (labeled as 5)  : min( round(barrier\_9/m) \* m, new\_barrier\_8 - m )
 
+
 6) Apply the barriers for each contract types as defined in config file:
+
    Example: 
+
    - Single\_barrier\_european\_option: \[95, 78, 68, 57, 50, 43, 32, 22, 5\]
+
    - Single\_barrier\_american\_option: \[95, 78, 68, 57, 43, 32, 22, 5\]
+
    - Double\_barrier\_european\_option: \[68, 95, 57, 78, 50, 68, 43, 57, 32, 50, 22, 43, 5, 32\],
+
    - Double\_barrier\_american\_option: \[32, 68, 22, 78, 5, 95\]
 
 # INPUT PARAMETERS
