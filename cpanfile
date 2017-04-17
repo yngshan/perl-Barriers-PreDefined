@@ -1,10 +1,20 @@
-requires 'indirect',    '>= 0.37';
+requires 'Moo';
+requires 'POSIX';
+requires 'List::Util';
+requires 'List::MoreUtils';
+requires 'Math::CDF';
 
 on test => sub {
-    requires 'Test::More', '>= 0.98';
+    requires 'Test::More';
+    requires 'Test::Deep';
+    requires 'Test::FailWarnings';
 };
 
-on develop => sub {
-    requires 'Devel::Cover', '>= 1.23';
-    requires 'Devel::Cover::Report::Codecov', '>= 0.14';
+on build => sub {
+   requires 'Moo';
+   requires 'POSIX';
+   requires 'List::Util';
+   requires 'List::MoreUtils';
+   requires 'Math::CDF';
+
 };
