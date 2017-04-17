@@ -90,7 +90,7 @@ Steps:
    Barrier_9 : rounded_central_spot - 45 * m
 
 5) Build the new barriers array with ensuring the minimum_barrier_interval is hold.
-   Example: Example: If the barrier_interval are [45, 28, 18, 7], the new_barrier will be build as follow:
+   Example: If the barrier_interval are [45, 28, 18, 7], the new_barrier will be build as follow:
    New_barrier_1 (labeled as 95) : max( round(barrier_1/m) * m, new_barrier_2 + m )
    New_barrier_2 (labeled as 78) : max( round(barrier_2/m) * m, new_barrier_3 + m )
    New_barrier_3 (labeled as 68) : max( round(barrier_3/m) * m, new_barrier_4 + m )
@@ -102,7 +102,7 @@ Steps:
    New_barrier_9 (labeled as 5)  : min( round(barrier_9/m) * m, new_barrier_8 - m )
 
 6) Apply the barriers for each contract types as defined in config file:
-   Example: 
+   Example of config file:
    - Single_barrier_european_option: [95, 78, 68, 57, 50, 43, 32, 22, 5]
    - Single_barrier_american_option: [95, 78, 68, 57, 43, 32, 22, 5]
    - Double_barrier_european_option: [68, 95, 57, 78, 50, 68, 43, 57, 32, 50, 22, 43, 5, 32],
