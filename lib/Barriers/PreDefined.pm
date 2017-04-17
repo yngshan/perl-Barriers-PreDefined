@@ -219,7 +219,7 @@ Input_parameters: $duration, $central_spot, $display_decimal, $barriers_levels
 =cut
 
 sub _calculate_method_1 {
-    my ($central_spot, $format, $duration, $barriers_levels, $full_barriers_levels) = @_;
+    my ($central_spot, $format, $duration, $barriers_levels) = @_;
 
     my $tiy = $duration / (365 * 86400);
     my @initial_barriers            = map { _get_barrier_from_call_bs_price($_, $tiy, $central_spot, 0.1) } (0.05, 0.95);
