@@ -166,6 +166,12 @@ has calculate_method_2 => (
     lazy_build => 1,
 );
 
+=head2 BUILD
+
+We unwrap the config to map the barrier_level correspond to the contract type
+
+=cut
+
 sub BUILD {
     my $self   = shift;
     my $args   = shift;
