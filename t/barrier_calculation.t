@@ -2,14 +2,13 @@
 
 use strict;
 use warnings;
-use Test::More (tests => 2);
-use Test::Deep;
+
+use Test::More;
 use Test::FailWarnings;
+
 use Barriers::PreDefined;
 
 subtest 'get_avilable_barrier_method_1' => sub {
-    plan tests => 8;
-
     my $method_1_config = [{
             types         => [qw/CALLE PUT/],
             barrier_level => [95, 85, 75, 62, 50, 38, 25, 15, 5],
@@ -51,12 +50,11 @@ subtest 'get_avilable_barrier_method_1' => sub {
             display_decimal => 2,
             method          => 1
         });
-        cmp_bag($available_barriers, $test_result->{$type}, $type . ': available_barriers_match_for_method_1');
+        is_deeply($available_barriers, $test_result->{$type},  $type . ': available_barriers_match_for_method_1');
     }
 };
 
 subtest 'get_avilable_barrier_method_2' => sub {
-    plan tests => 8;
 
     my $method_2_config = [{
             types         => [qw/CALLE PUT/],
@@ -88,7 +86,7 @@ subtest 'get_avilable_barrier_method_2' => sub {
     };
 
     my $calculation_class = Barriers::PreDefined->new(config => $method_2_config);
-    for my $type (keys %$test_result) {
+    for my $type (sort keys %$test_result) {
         my $available_barriers = $calculation_class->calculate_available_barriers({
             contract_type   => $type,
             duration        => 2 * 60 * 60 + 15 * 60,
@@ -96,6 +94,8 @@ subtest 'get_avilable_barrier_method_2' => sub {
             display_decimal => 2,
             method          => 2
         });
-        cmp_bag($available_barriers, $test_result->{$type}, $type . ': available_barriers_match_for_method_2');
+        is_deeply $available_barriers, $test_result->{$type}, $type . ': available_barriers_match_for_method_2'
     }
-    }
+};
+
+done_testing;
