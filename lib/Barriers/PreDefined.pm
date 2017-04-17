@@ -205,12 +205,12 @@ sub calculate_available_barriers {
     my ($contract_type, $duration, $central_spot, $display_decimal, $method) =
         @{$args}{qw(contract_type duration central_spot display_decimal method)};
     my $barriers_levels = $self->_contract_barrier_levels->{$contract_type};
-    # Only CALLE/PUT has full list of barrier level.
-    my $full_barriers_levels = $self->_contract_barrier_levels->{'CALLE'};
+
+    my $method_barrier_levels = $method eq '1' ? $barriers_levels : $self->_contract_barrier_levels->{'CALLE'};
 
     my $format           = '%.' . $display_decimal . 'f';
     my $calculate_method = $method eq '1' ? \&_calculate_method_1 : \&_calculate_method_2;
-    my $barriers_list    = $calculate_method->($central_spot, $format, $duration, $barriers_levels, $full_barriers_levels);
+    my $barriers_list    = $calculate_method->($central_spot, $format, $duration, $method_barrier_levels);
 
     my $available_barriers = [map { sprintf $format, $barriers_list->{$_} } @{$barriers_levels}];
 
@@ -247,16 +247,16 @@ Input_parameters: $duration, $central_spot, $display_decimal, $barriers_levels
 
 sub _calculate_method_2 {
 
-    my ($central_spot, $format, $duration, $barriers_levelsm, $full_barriers_levels) = @_;
+    my ($central_spot, $format, $duration, $barriers_levels) = @_;
     my $tiy = $duration / (365 * 86400);
     my @initial_barriers            = map { _get_barrier_from_call_bs_price($_, $tiy, $central_spot, 0.1) } (0.05, 0.95);
     my $distance_between_boundaries = abs($initial_barriers[0] - $initial_barriers[1]);
     my $minimum_step                = sprintf($format, $distance_between_boundaries / 90);
-    my @steps                       = uniq(map { abs(50 - $_) } @{$full_barriers_levels});
+    my @steps                       = uniq(map { abs(50 - $_) } @{$barriers_levels});
     my $rounding_to_integer         = '%0.f';
 
     my $minimum_barrier_interval = 0.0005 * (10**(sprintf($rounding_to_integer, POSIX::log10($central_spot))));
-    my $rounded_central_spot = sprintf($rounding_to_integer, ($central_spot / $minimum_barrier_interval) * $minimum_barrier_interval);
+    my $rounded_central_spot = sprintf($rounding_to_integer, ($central_spot / $minimum_barrier_interval)) * $minimum_barrier_interval;
     my (@barriers_steps, @barriers_value);
     #all these steps do so that we can have array sorted in the way we want
     foreach my $step (@steps) {
