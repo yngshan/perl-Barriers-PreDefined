@@ -148,7 +148,7 @@ For example:
    - Double_barrier_european_option: [68, 95, 57, 78, 50, 68, 43, 57, 32, 50, 22, 43, 5, 32],
    - Double_barrier_american_option: [32, 68, 22, 78, 5, 95]
 
-The barrier level 78 is 28 * min_barrier_interval from the central spot, while 22 is -28 * min_barrier_interval from the central spot. 
+The barrier level 78 is 28 * min_barrier_interval from the central spot, while 22 is -28 * min_barrier_interval from the central spot.
 
 =cut
 
