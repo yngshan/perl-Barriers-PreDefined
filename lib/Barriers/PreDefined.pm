@@ -188,16 +188,12 @@ sub calculate_available_barriers {
     my ($contract_type, $duration, $central_spot, $display_decimal, $method) =
         @{$args}{qw(contract_type duration central_spot display_decimal method)};
     my $barriers_levels = $self->_contract_barrier_levels->{$contract_type};
-    my $barriers_calculation_args = {
-        duration        => $duration,
-        central_spot    => $central_spot,
-        display_decimal => $display_decimal,
-        barriers_levels => $barriers_levels
-    };
-    my $barriers_list =
-        $method == 1 ? $self->calculate_method_1($barriers_calculation_args) : $self->calculate_method_2($barriers_calculation_args);
 
     my $format  =  '%.' . $display_decimal . 'f';
+
+    my $calculate_method = $method eq '1' ? \&_calculate_method_1 : \&_calculate_method_2;
+    my $barriers_list = $calculate_method->($central_spot, $format, $duration, $barriers_levels)
+
     my $available_barriers = [map { sprintf $format, $barriers_list->{$_} } @{$barriers_levels}];
 
     return $available_barriers;
@@ -210,18 +206,15 @@ Input_parameters: $duration, $central_spot, $display_decimal, $barriers_levels
 
 =cut
 
-sub _build_calculate_method_1 {
-    my $self =shift;
-    my $args = shift;
+sub _calculate_method_1 {
+    my ($central_spot, $format, $duration, $barriers_levels) = @_;
 
-    my ($duration, $central_spot, $display_decimal, $barriers_levels) = @{$args}{qw(duration central_spot display_decimal barriers_levels)};
     my $tiy = $duration / (365 * 86400);
     my @initial_barriers            = map { _get_barrier_from_call_bs_price($_, $tiy, $central_spot, 0.1) } (0.05, 0.95);
     my $distance_between_boundaries = abs($initial_barriers[0] - $initial_barriers[1]);
-    my $minimum_step                = sprintf '%.' . $display_decimal . 'f', ($distance_between_boundaries / 90);
-    my @steps                       = uniq(map { abs(50 - $_) } @{$barriers_levels});
+    my $minimum_step                = sprintf($format, $distance_between_boundaries / 90);
 
-    my %new_barriers = map { (50 - $_ => $central_spot - $_ * $minimum_step, 50 + $_ => $central_spot + $_ * $minimum_step) } @steps;
+    my %new_barriers = map {  $_ => $central_spot + ($_- 50) * $minimum_step) } @$barriers_levels;
 
     return \%new_barriers;
 
@@ -234,20 +227,19 @@ Input_parameters: $duration, $central_spot, $display_decimal, $barriers_levels
 
 =cut
 
-sub _build_calculate_method_2 {
-    my $self = shift;
-    my $args = shift;
+sub _calculate_method_2 {
 
-    my ($duration, $central_spot, $display_decimal, $barriers_levels) = @{$args}{qw(duration central_spot display_decimal barriers_levels)};
-
+    my ($central_spot, $format, $duration, $barriers_levels) = @_;
     my $tiy = $duration / (365 * 86400);
     my @initial_barriers            = map { _get_barrier_from_call_bs_price($_, $tiy, $central_spot, 0.1) } (0.05, 0.95);
     my $distance_between_boundaries = abs($initial_barriers[0] - $initial_barriers[1]);
-    my $minimum_step                = sprintf '%.' . $display_decimal . 'f', ($distance_between_boundaries / 90);
+    my $minimum_step                = sprintf($format, $distance_between_boundaries / 90);;
     my @steps                       = uniq(map { abs(50 - $_) } @{$barriers_levels});
+    my $rounding_to_integer         = '%0.f';
 
-    my $minimum_barrier_interval = 0.0005 * (10** (sprintf '%0.f', POSIX::log10($central_spot)));
-    my $rounded_central_spot = sprintf '%0.f', ($central_spot / $minimum_barrier_interval) * $minimum_barrier_interval;
+
+    my $minimum_barrier_interval = 0.0005 * (10** (sprintf($rounding_to_integer, POSIX::log10($central_spot))));
+    my $rounded_central_spot = sprintf($rounding_to_integer, ($central_spot / $minimum_barrier_interval) * $minimum_barrier_interval);
 
     my (@barriers_steps, @barriers_value);
     #all these steps do so that we can have array sorted in the way we want
@@ -272,14 +264,14 @@ sub _build_calculate_method_2 {
     # For the upper barrier, we are taking the max of rounded barrier(to the nearest min barrier interval) and the next new_barrier plus min barrier interval
     for (3, 2, 1, 0) {
 
-        $new_barriers{$barriers_steps[$_]} = max((sprintf '%0.f', $barriers_value[$_] / $minimum_barrier_interval) * $minimum_barrier_interval,
+        $new_barriers{$barriers_steps[$_]} = max((sprintf($rounding_to_integer, $barriers_value[$_] / $minimum_barrier_interval)) * $minimum_barrier_interval,
             $new_barriers{$barriers_steps[$_ + 1]} + $minimum_barrier_interval);
 
     }
 
     # For the lower barrier, we are taking the min of rounded barrier(to the nearest min barrier interval) and the previous new_barrier minus min barrier interval
     for (5 .. 8) {
-        $new_barriers{$barriers_steps[$_]} = min((sprintf '%0.f', $barriers_value[$_] / $minimum_barrier_interval) * $minimum_barrier_interval,
+        $new_barriers{$barriers_steps[$_]} = min((sprintf($rounding_to_integer, $barriers_value[$_] / $minimum_barrier_interval)) * $minimum_barrier_interval,
             $new_barriers{$barriers_steps[$_ - 1]} - $minimum_barrier_interval);
 
     }
