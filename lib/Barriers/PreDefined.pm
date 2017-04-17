@@ -18,8 +18,32 @@ Barriers::PreDefined - A class to calculate a series of predefined barriers for 
 =head1 SYNOPSIS
 
     use Barriers::PreDefined;
+    my $config = [{
+            types         => [qw/CALLE PUT/],
+            barrier_level => [95, 85, 75, 62, 50, 38, 25, 15, 5],
+        },
+        {
+            types         => [qw/ONETOUCH NOTOUCH/],
+            barrier_level => [95, 85, 75, 62, 38, 25, 15, 5],
+        },
+        {
+            types         => [qw/EXPIRYMISS EXPIRYRANGEE/],
+            barrier_level => [75, 95, 62, 85, 50, 75, 38, 62, 25, 50, 15, 38, 5, 25],
+
+        },
+        {
+            types         => [qw/RANGE UPORDOWN/],
+            barrier_level => [25, 75, 15, 85, 5, 95,]
+        },
+    ];
     my $barrier_class = Barriers::PreDefined->new(config => $config);
-    my $available_barriers = $barrier_class->calculate_available_barriers({contract_type=>'CALLE',duration=> 8100,central_spot=>100.5,display_decimal=>2,method=>2});
+    my $available_barriers = $barrier_class->calculate_available_barriers({
+         contract_type=>'CALLE',
+         duration=> 8100,
+         central_spot=>100.5,
+         display_decimal=>2,
+         method=>2
+    });
 
 =head1 DESCRIPTION
 
