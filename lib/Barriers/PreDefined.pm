@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Moo;
 use POSIX ();
-use List::Util qw(min max);
+use List::Util qw(min max first);
 use List::MoreUtils qw(uniq);
 use Math::CDF qw(qnorm);
 
@@ -247,7 +247,7 @@ sub _calculate_method_1 {
 =head2 calculate_method_2
 
 A function to build barriers array based on method 2
-Input_parameters: $duration, $central_spot, $display_decimal, $barriers_levels
+Input_parameters: $duration, $central_spot, $display_decimal, $barriers_levels, $base_min_barrier_interval
 
 =cut
 
@@ -258,45 +258,32 @@ sub _calculate_method_2 {
     my @initial_barriers            = map { _get_barrier_from_call_bs_price($_, $tiy, $central_spot, 0.1) } (0.05, 0.95);
     my $distance_between_boundaries = abs($initial_barriers[0] - $initial_barriers[1]);
     my $minimum_step                = sprintf($format, $distance_between_boundaries / 90);
-    my @steps                       = uniq(map { abs(50 - $_) } @{$barriers_levels});
     my $rounding_to_integer         = '%0.f';
 
     my $minimum_barrier_interval = $base_min_barrier_interval * (10**(sprintf($rounding_to_integer, POSIX::log10($central_spot))));
     my $rounded_central_spot = sprintf($rounding_to_integer, ($central_spot / $minimum_barrier_interval)) * $minimum_barrier_interval;
-    my (@barriers_steps, @barriers_value);
-    #all these steps do so that we can have array sorted in the way we want
-    foreach my $step (@steps) {
-        next if $step == 0;
-        push @barriers_steps, 50 + $step;
-        push @barriers_value, $rounded_central_spot + $step * $minimum_step;
 
-    }
+    my @barriers_steps = @$barriers_levels;
+    my @barriers_value = map { $rounded_central_spot + ($_ - 50) * $minimum_step } @barriers_steps;
 
-    push @barriers_steps, 50;
-    push @barriers_value, $rounded_central_spot;
+    my $last_element = $#barriers_steps;
+    my $central_point_index = first { $barriers_steps[$_] == 50 } 0 .. $last_element;
 
-    foreach my $step (reverse @steps) {
-        next if $step == 0;
-        push @barriers_steps, 50 - $step;
-        push @barriers_value, $rounded_central_spot - $step * $minimum_step;
-
-    }
     my %new_barriers;
     $new_barriers{50} = $rounded_central_spot;
-    # For the upper barrier, we are taking the max of rounded barrier(to the nearest min barrier interval) and the next new_barrier plus min barrier interval
-    for (3, 2, 1, 0) {
-        $new_barriers{$barriers_steps[$_]} =
-            max((sprintf($rounding_to_integer, $barriers_value[$_] / $minimum_barrier_interval)) * $minimum_barrier_interval,
-            $new_barriers{$barriers_steps[$_ + 1]} + $minimum_barrier_interval);
 
+    # For the upper barrier, we are taking the max of rounded barrier(to the nearest min barrier interval) and the next new_barrier plus min barrier interval
+    for (my $i = $central_point_index - 1; $i >= 0; $i--) {
+        $new_barriers{$barriers_steps[$i]} =
+            max((sprintf($rounding_to_integer, $barriers_value[$i] / $minimum_barrier_interval)) * $minimum_barrier_interval,
+            $new_barriers{$barriers_steps[$i + 1]} + $minimum_barrier_interval);
     }
 
     # For the lower barrier, we are taking the min of rounded barrier(to the nearest min barrier interval) and the previous new_barrier minus min barrier interval
-    for (5 .. 8) {
+    for ($central_point_index + 1 .. $last_element) {
         $new_barriers{$barriers_steps[$_]} =
             min((sprintf($rounding_to_integer, $barriers_value[$_] / $minimum_barrier_interval)) * $minimum_barrier_interval,
             $new_barriers{$barriers_steps[$_ - 1]} - $minimum_barrier_interval);
-
     }
 
     return \%new_barriers;
