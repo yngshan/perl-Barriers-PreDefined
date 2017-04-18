@@ -136,6 +136,10 @@ The number of the display decimal point. Example 2 mean 0.01
 
 The method for the barrier calculation, method_1 or method_2
 
+=head2 base_min_barrier_interval
+
+The base of the minimum barrier interval. The default suggested base is 0.0005
+
 =cut
 
 =head2 _contract_barrier_levels
@@ -194,7 +198,7 @@ sub BUILD {
 =head2 calculate_available_barriers
 
 A function to calculate available barriers for a contract type
-Input_parameters: $contract_type, $duration, $central_spot, $display_decimal, $method
+Input_parameters: $contract_type, $duration, $central_spot, $display_decimal, $method, $base_min_barrier_interval
 
 =cut
 
@@ -208,9 +212,11 @@ sub calculate_available_barriers {
 
     my $method_barrier_levels = $method eq '1' ? $barriers_levels : $self->_contract_barrier_levels->{'CALLE'};
 
+    my $base_min_barrier_interval = $args->{base_min_barrier_interval} // 0.0005;
+
     my $format           = '%.' . $display_decimal . 'f';
     my $calculate_method = $method eq '1' ? \&_calculate_method_1 : \&_calculate_method_2;
-    my $barriers_list    = $calculate_method->($central_spot, $format, $duration, $method_barrier_levels);
+    my $barriers_list    = $calculate_method->($central_spot, $format, $duration, $method_barrier_levels, $base_min_barrier_interval);
 
     my $available_barriers = [map { sprintf $format, $barriers_list->{$_} } @{$barriers_levels}];
 
@@ -247,7 +253,7 @@ Input_parameters: $duration, $central_spot, $display_decimal, $barriers_levels
 
 sub _calculate_method_2 {
 
-    my ($central_spot, $format, $duration, $barriers_levels) = @_;
+    my ($central_spot, $format, $duration, $barriers_levels, $base_min_barrier_interval) = @_;
     my $tiy = $duration / (365 * 86400);
     my @initial_barriers            = map { _get_barrier_from_call_bs_price($_, $tiy, $central_spot, 0.1) } (0.05, 0.95);
     my $distance_between_boundaries = abs($initial_barriers[0] - $initial_barriers[1]);
@@ -255,7 +261,7 @@ sub _calculate_method_2 {
     my @steps                       = uniq(map { abs(50 - $_) } @{$barriers_levels});
     my $rounding_to_integer         = '%0.f';
 
-    my $minimum_barrier_interval = 0.0005 * (10**(sprintf($rounding_to_integer, POSIX::log10($central_spot))));
+    my $minimum_barrier_interval = $base_min_barrier_interval * (10**(sprintf($rounding_to_integer, POSIX::log10($central_spot))));
     my $rounded_central_spot = sprintf($rounding_to_integer, ($central_spot / $minimum_barrier_interval)) * $minimum_barrier_interval;
     my (@barriers_steps, @barriers_value);
     #all these steps do so that we can have array sorted in the way we want

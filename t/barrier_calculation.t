@@ -2,14 +2,13 @@
 
 use strict;
 use warnings;
-use Test::More (tests => 2);
-use Test::Deep;
+
+use Test::More;
 use Test::FailWarnings;
+
 use Barriers::PreDefined;
 
 subtest 'get_avilable_barrier_method_1' => sub {
-    plan tests => 8;
-
     my $method_1_config = [{
             types         => [qw/CALLE PUT/],
             barrier_level => [95, 85, 75, 62, 50, 38, 25, 15, 5],
@@ -51,12 +50,11 @@ subtest 'get_avilable_barrier_method_1' => sub {
             display_decimal => 2,
             method          => 1
         });
-        cmp_bag($available_barriers, $test_result->{$type}, $type . ': available_barriers_match_for_method_1');
+        is_deeply($available_barriers, $test_result->{$type}, $type . ': available_barriers_match_for_method_1');
     }
 };
 
 subtest 'get_avilable_barrier_method_2' => sub {
-    plan tests => 8;
 
     my $method_2_config = [{
             types         => [qw/CALLE PUT/],
@@ -77,25 +75,60 @@ subtest 'get_avilable_barrier_method_2' => sub {
     ];
 
     my $test_result = {
-        'CALLE'    => ['111.50', '111.35', '111.25', '111.10', '111.05', '111.00', '110.85', '110.75', '110.60'],
-        'PUT'      => ['111.50', '111.35', '111.25', '111.10', '111.05', '111.00', '110.85', '110.75', '110.60'],
-        'ONETOUCH' => ['111.50', '111.35', '111.25', '111.10', '111.00', '110.85', '110.75', '110.60'],
-        'NOTOUCH'  => ['111.50', '111.35', '111.25', '111.10', '111.00', '110.85', '110.75', '110.60'],
-        'EXPIRYMISS' => ['111.25', '111.50', '111.10', '111.35', '111.05', '111.25', '111.00', '111.10', '110.85', '111.05', '110.75', '111.00', '110.60', '110.85'],
-        'EXPIRYRANGEE' =>['111.25', '111.50', '111.10', '111.35', '111.05', '111.25', '111.00', '111.10', '110.85', '111.05', '110.75', '111.00', '110.60', '110.85'],
-        'RANGE'    => ['110.85', '111.25', '110.75', '111.35', '110.60', '111.50'],
-        'UPORDOWN' => ['110.85', '111.25', '110.75', '111.35', '110.60', '111.50'],
+        0.0005 => {
+
+            'CALLE'      => ['111.50', '111.35', '111.25', '111.10', '111.05', '111.00', '110.85', '110.75', '110.60'],
+            'PUT'        => ['111.50', '111.35', '111.25', '111.10', '111.05', '111.00', '110.85', '110.75', '110.60'],
+            'ONETOUCH'   => ['111.50', '111.35', '111.25', '111.10', '111.00', '110.85', '110.75', '110.60'],
+            'NOTOUCH'    => ['111.50', '111.35', '111.25', '111.10', '111.00', '110.85', '110.75', '110.60'],
+            'EXPIRYMISS' => [
+                '111.25', '111.50', '111.10', '111.35', '111.05', '111.25', '111.00', '111.10',
+                '110.85', '111.05', '110.75', '111.00', '110.60', '110.85'
+            ],
+            'EXPIRYRANGEE' => [
+                '111.25', '111.50', '111.10', '111.35', '111.05', '111.25', '111.00', '111.10',
+                '110.85', '111.05', '110.75', '111.00', '110.60', '110.85'
+            ],
+            'RANGE'    => ['110.85', '111.25', '110.75', '111.35', '110.60', '111.50'],
+            'UPORDOWN' => ['110.85', '111.25', '110.75', '111.35', '110.60', '111.50'],
+        },
+        0.05 => {
+
+            'CALLE'      => ['130.00', '125.00', '120.00', '115.00', '110.00', '105.00', '100.00', '95.00', '90.00'],
+            'PUT'        => ['130.00', '125.00', '120.00', '115.00', '110.00', '105.00', '100.00', '95.00', '90.00'],
+            'ONETOUCH'   => ['130.00', '125.00', '120.00', '115.00', '105.00', '100.00', '95.00',  '90.00'],
+            'NOTOUCH'    => ['130.00', '125.00', '120.00', '115.00', '105.00', '100.00', '95.00',  '90.00'],
+            'EXPIRYMISS' => [
+                '120.00', '130.00', '115.00', '125.00', '110.00', '120.00', '105.00', '115.00',
+                '100.00', '110.00', '95.00',  '105.00', '90.00',  '100.00'
+            ],
+            'EXPIRYRANGEE' => [
+                '120.00', '130.00', '115.00', '125.00', '110.00', '120.00', '105.00', '115.00',
+                '100.00', '110.00', '95.00',  '105.00', '90.00',  '100.00'
+            ],
+            'RANGE'    => ['100.00', '120.00', '95.00', '125.00', '90.00', '130.00'],
+            'UPORDOWN' => ['100.00', '120.00', '95.00', '125.00', '90.00', '130.00'],
+
+            }
+
     };
 
     my $calculation_class = Barriers::PreDefined->new(config => $method_2_config);
-    for my $type (keys %$test_result) {
-        my $available_barriers = $calculation_class->calculate_available_barriers({
-            contract_type   => $type,
-            duration        => 2 * 60 * 60 + 15 * 60,
-            central_spot    => 111.047,
-            display_decimal => 2,
-            method          => 2
-        });
-        cmp_bag($available_barriers, $test_result->{$type}, $type . ': available_barriers_match_for_method_2');
+    for my $base_min_barrier_interval (sort keys %$test_result) {
+        for my $type (sort keys %{$test_result->{$base_min_barrier_interval}}) {
+            my $available_barriers = $calculation_class->calculate_available_barriers({
+                contract_type             => $type,
+                duration                  => 2 * 60 * 60 + 15 * 60,
+                central_spot              => 111.047,
+                display_decimal           => 2,
+                method                    => 2,
+                base_min_barrier_interval => $base_min_barrier_interval
+            });
+            is_deeply $available_barriers, $test_result->{$base_min_barrier_interval}->{$type},
+                $type . ': available_barriers_match_for_method_2 with base ' . $base_min_barrier_interval;
+        }
     }
-    }
+
+};
+
+done_testing;
