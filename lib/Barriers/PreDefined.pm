@@ -42,7 +42,8 @@ Barriers::PreDefined - A class to calculate a series of predefined barriers for 
          duration=> 8100,
          central_spot=>100.5,
          display_decimal=>2,
-         method=>2
+         method=>2,
+         base_min_barrier_interval => 0.0005
     });
 
 =head1 DESCRIPTION
@@ -175,7 +176,7 @@ The method for the barrier calculation, method_1 or method_2
 
 =head2 base_min_barrier_interval
 
-The base of the minimum barrier interval. The default suggested base is 0.0005
+The base of the minimum barrier interval. The suggested base is 0.0005
 
 =cut
 
@@ -243,13 +244,12 @@ sub calculate_available_barriers {
     my $self = shift;
     my $args = shift;
 
-    my ($contract_type, $duration, $central_spot, $display_decimal, $method) =
-        @{$args}{qw(contract_type duration central_spot display_decimal method)};
+    my ($contract_type, $duration, $central_spot, $display_decimal, $method, $base_min_barrier_interval) =
+        @{$args}{qw(contract_type duration central_spot display_decimal method base_min_barrier_interval)};
     my $barriers_levels = $self->_contract_barrier_levels->{$contract_type};
 
     my $method_barrier_levels = $method eq '1' ? $barriers_levels : $self->_contract_barrier_levels->{'CALLE'};
 
-    my $base_min_barrier_interval = $args->{base_min_barrier_interval} // 0.0005;
 
     my $format           = '%.' . $display_decimal . 'f';
     my $calculate_method = $method eq '1' ? \&_calculate_method_1 : \&_calculate_method_2;

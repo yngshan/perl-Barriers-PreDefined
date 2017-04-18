@@ -29,7 +29,8 @@ Barriers::PreDefined - A class to calculate a series of predefined barriers for 
          duration=> 8100,
          central_spot=>100.5,
          display_decimal=>2,
-         method=>2
+         method=>2,
+         base_min_barrier_interval => 0.0005
     });
 
 # DESCRIPTION
@@ -160,7 +161,7 @@ The method for the barrier calculation, method\_1 or method\_2
 
 ## base\_min\_barrier\_interval
 
-The base of the minimum barrier interval. The default suggested base is 0.0005
+The base of the minimum barrier interval. The suggested base is 0.0005
 
 ## \_contract\_barrier\_levels
 
