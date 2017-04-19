@@ -1,5 +1,9 @@
 # NAME
 
+[![Build Status](https://travis-ci.org/binary-com/perl-Barriers-PreDefined.svg?branch=master)](https://travis-ci.org/binary-com/perl-Barriers-PreDefined)
+[![codecov](https://codecov.io/gh/binary-com/perl-Barriers-PreDefined/branch/master/graph/badge.svg)](https://codecov.io/gh/binary-com/perl-Barriers-PreDefined)
+
+
 Barriers::PreDefined - A class to calculate a series of predefined barriers for a particular contract.
 
 # SYNOPSIS
